@@ -9,10 +9,46 @@ text {
 </style>
 <body>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+<script src="http://thematicmapping.org/playground/d3/d3.slider/d3.slider.js"></script>
 <script>
 
-var year = 2015
-var discipline = 'cs'
+function get_year(){return 2015}
+
+function get_discipline(){return 'cs'}
+
+var dropDown = d3.select("body").append("select")
+                    .attr("name", "country-list");
+var options = dropDown.selectAll("option")
+           .data(['cs','stats'])
+         .enter()
+           .append("option");
+options.text(function (d) { return d.value; })
+       .attr("value", function (d) { return d.value; })
+dropDown.on("change", menuChanged);
+function menuChanged() {
+          //the name isn't important, but has to match the name
+          //you added to the menu's "change" event listener.
+
+    var selectedValue = d3.event.target.value;  
+         //get the name of the selected option from the change event object
+
+    jsonOutside.features.forEach(function (d) { 
+        // loop through json data to match td entry
+
+        if (selectedValue === d.properties.name) {
+        //for each data object in the features array (d), compare it's
+        //name against the one you got from the event object
+        //if they match, then:
+
+            alert(selectedValue)  //remove this line when things are working!
+
+            click(d); // pass json element that matches selected value to click
+             //which will respond the same way as if you clicked the country on
+             //the map. 
+        };
+    })
+}
+//*/
 
 var diameter = 800,
     format = d3.format(",d"),
@@ -30,9 +66,11 @@ var svg = d3.select("body").append("svg")
     .attr("class", "bubble");
 
 
-d3.json("data_model.json", function(error, root) {
-  if (error) throw error;
-  
+d3.json("data_model.json",draw);
+
+function draw(root){
+  year = get_year()
+  discipline = get_discipline()
   var node = svg.selectAll(".node")
       .data(bubble.nodes(root[year][discipline])
       .filter(function(d) { return !d.children; }))
@@ -53,7 +91,7 @@ d3.json("data_model.json", function(error, root) {
   node.append("text")
       .attr("dy", ".3em")
       .style("text-anchor", "middle")
-      .text(function(d) { return d.category.substring(0, d.r / 3); });
+      .text(function(d) { return d.paper_count; });
 
   var width = 0.5*diameter
   var height =diameter- 0.1*diameter
@@ -78,7 +116,7 @@ legend.append("text")
   .attr("dy", ".35em")
   .text(function(d) { return d; });
 
-});
+};
 
 d3.select(self.frameElement).style("height", diameter + "px");
 
