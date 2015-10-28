@@ -1,0 +1,16 @@
+from bs4 import BeautifulSoup
+import urllib
+def build_arxiv_cat_index():
+	url = 'http://arxiv.org/help/api/user-manual#python_simple_example'
+	data = urllib.urlopen(url).read()
+	soup = BeautifulSoup(html_doc, 'html.parser')
+	results = {}
+	for row in soup.findAll('tr'):
+	    aux = row.findAll('td')
+	    results[aux[0].string] = aux[1].string
+print results
+
+def query_arxiv(category):
+url = 'http://export.arxiv.org/api/query?search_query=all:electron&start=0&max_results=1'
+data = urllib.urlopen(url).read()
+print data
