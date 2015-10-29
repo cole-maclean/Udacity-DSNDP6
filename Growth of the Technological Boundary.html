@@ -11,9 +11,10 @@ text {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 <script src="http://thematicmapping.org/playground/d3/d3.slider/d3.slider.js"></script>
 <script src="colorbrewer.js"></script>
+<script src="d3.slider.js"></script>
 <script>
 
-function get_year(){return 2015}
+function get_year(){return 2010}
 
 function get_discipline(){return 'cs'}
 
@@ -58,11 +59,11 @@ var page_title = svg.append("svg")
   .attr("x", width/2)
   .attr("y", 10)
   .attr("dy", ".35em")
-  .style("font-size", "100px")
+  .style("font-size", "20px")
   .style("text-decoration","underline")
   .style("text-anchor", "middle")
   .style("font-weight", "bold")
-  .text("Growth of the Technological Boundary");
+  .text("Growth of the Scientific Boundary");
 
 var legend_title = svg.append("svg")
   .attr("width", 200)
@@ -76,6 +77,16 @@ var legend_title = svg.append("svg")
   .style("font-weight", "bold")
   .text("Parent Category");
 
+var discipline_title = svg.append("svg")
+.attr("class","discipline_title")
+.append("text")
+.attr("x", width-75)
+.attr("y", 9)
+.attr("dy", ".35em")
+.style("text-anchor", "middle")
+.style("font-weight", "bold")
+.text("Select Discipline");
+
 var discipline= svg.append("svg")
   .attr("x",width - 100)
   .attr("class","discipline")
@@ -87,27 +98,26 @@ var legend = svg.append("svg")
 
 var bubble_color = d3.scale.category20c();
 
-var diameter = 800-margin-100,
-    format = d3.format(",d");
-    
-
-var bubble = d3.layout.pack()
-    .sort(null)
-    .size([diameter, diameter])
-    .padding(1.5)
-    .value(function(d){return d.paper_count});
-
-var bubble_svg = svg.append("svg")
-    .attr("width", diameter)
-    .attr("height", diameter)
-    .attr("x",18+200+margin)
-    .attr("y",50)
-    .attr("class", "bubble");
 
 function draw(data_model){
 
   year = get_year()
   discipline = get_discipline()
+
+  category_ratio = data_model[year][discipline]['children'].length/data_model[2015][discipline]['children'].length
+
+  var bubble = d3.layout.pack()
+    .sort(null)
+    .size([width*category_ratio, height*category_ratio])
+    .padding(1.5)
+    .value(function(d){return d.paper_count});
+
+var bubble_svg = svg.append("svg")
+    .attr("width", width*category_ratio)
+    .attr("height", height*category_ratio)
+    .attr("x",(width/2*(1-category_ratio)))
+    .attr("y",(height/2*(1-category_ratio)))
+    .attr("class", "bubble");
 
   var legend_node = legend.selectAll(".node")
   .data(data_model[year][discipline]['parents'])
@@ -135,7 +145,7 @@ function draw(data_model){
 
   node.append("title")
       .text(function(d) {
-          return d.category + ": " + format(d.paper_count);});
+          return d.category + ": " + d.paper_count});
 
   node.append("circle")
       .attr("r", function(d) {
@@ -148,8 +158,11 @@ function draw(data_model){
       .text(function(d) { return d.paper_count; });
 };
 
+
+
+
 d3.json("disciplines.json",discipline_selection);
 var data_model = d3.json("data_model.json",update);
-d3.select(self.frameElement).style("height", diameter + "px");
+//d3.select(self.frameElement).style("height", diameter + "px");
 
 </script>
