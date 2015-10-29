@@ -10,49 +10,86 @@ text {
 <body>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 <script src="http://thematicmapping.org/playground/d3/d3.slider/d3.slider.js"></script>
+<script src="colorbrewer.js"></script>
 <script>
 
 function get_year(){return 2015}
 
 function get_discipline(){return 'cs'}
 
-var dropDown = d3.select("body").append("select")
-                    .attr("name", "country-list");
-var options = dropDown.selectAll("option")
-           .data(['cs','stats'])
-         .enter()
-           .append("option");
-options.text(function (d) { return d.value; })
-       .attr("value", function (d) { return d.value; })
-dropDown.on("change", menuChanged);
-function menuChanged() {
-          //the name isn't important, but has to match the name
-          //you added to the menu's "change" event listener.
-
-    var selectedValue = d3.event.target.value;  
-         //get the name of the selected option from the change event object
-
-    jsonOutside.features.forEach(function (d) { 
-        // loop through json data to match td entry
-
-        if (selectedValue === d.properties.name) {
-        //for each data object in the features array (d), compare it's
-        //name against the one you got from the event object
-        //if they match, then:
-
-            alert(selectedValue)  //remove this line when things are working!
-
-            click(d); // pass json element that matches selected value to click
-             //which will respond the same way as if you clicked the country on
-             //the map. 
-        };
-    })
+function update(data_model){
+  draw(data_model)
 }
-//*/
 
-var diameter = 800,
-    format = d3.format(",d"),
-    color = d3.scale.category20c();
+function discipline_selection(disciplines){
+  var radius = 20
+  var discipline_color = d3.scale.ordinal()
+            .domain(disciplines)
+            .range(colorbrewer.RdGy[10]);
+  var discipline_node = discipline.selectAll(".node")
+  .data(disciplines)
+  .enter().append("g")
+  .attr("transform", function(d, i) {return "translate(" + radius + "," + (i+1) * (radius*2+10) + ")";})
+
+  discipline_node.append("circle")
+  .attr("r", radius)
+  .attr("fill", function(d) {return discipline_color(d)})
+
+  discipline_node.append("text")
+    .attr("x", 24)
+    .attr("y", 9)
+    .attr("dy", ".35em")
+    .text(function(d) { return d; });
+};
+
+var margin = 75,
+    width = 1400 - margin,
+    height = 800 - margin;
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+
+var page_title = svg.append("svg")
+  .attr("width", width)
+  .attr("height", height)
+  .attr("class","page_title")
+  .append("text")
+  .attr("x", width/2)
+  .attr("y", 10)
+  .attr("dy", ".35em")
+  .style("font-size", "100px")
+  .style("text-decoration","underline")
+  .style("text-anchor", "middle")
+  .style("font-weight", "bold")
+  .text("Growth of the Technological Boundary");
+
+var legend_title = svg.append("svg")
+  .attr("width", 200)
+  .attr("height", 200)
+  .attr("class","legend_title")
+  .append("text")
+  .attr("x", 40)
+  .attr("y", 9)
+  .attr("dy", ".35em")
+  .style("text-anchor", "middle")
+  .style("font-weight", "bold")
+  .text("Parent Category");
+
+var discipline= svg.append("svg")
+  .attr("x",width - 100)
+  .attr("class","discipline")
+
+var legend = svg.append("svg")
+  .attr("width", 200)
+  .attr("height", height)
+  .attr("class","legend")
+
+var bubble_color = d3.scale.category20c();
+
+var diameter = 800-margin-100,
+    format = d3.format(",d");
+    
 
 var bubble = d3.layout.pack()
     .sort(null)
@@ -60,19 +97,36 @@ var bubble = d3.layout.pack()
     .padding(1.5)
     .value(function(d){return d.paper_count});
 
-var svg = d3.select("body").append("svg")
+var bubble_svg = svg.append("svg")
     .attr("width", diameter)
     .attr("height", diameter)
+    .attr("x",18+200+margin)
+    .attr("y",50)
     .attr("class", "bubble");
 
+function draw(data_model){
 
-d3.json("data_model.json",draw);
-
-function draw(root){
   year = get_year()
   discipline = get_discipline()
-  var node = svg.selectAll(".node")
-      .data(bubble.nodes(root[year][discipline])
+
+  var legend_node = legend.selectAll(".node")
+  .data(data_model[year][discipline]['parents'])
+  .enter().append("g")
+  .attr("transform", function(d, i) {return "translate(0," + (i+1) * 20 + ")"; });
+
+  legend_node.append("rect")
+    .attr("width", 18)
+    .attr("height", 18)
+    .style("fill", function(d) {return bubble_color(d); });
+
+  legend_node.append("text")
+    .attr("x", 24)
+    .attr("y", 9)
+    .attr("dy", ".35em")
+    .text(function(d) { return d; });
+
+  var node = bubble_svg.selectAll(".node")
+      .data(bubble.nodes(data_model[year][discipline])
       .filter(function(d) { return !d.children; }))
     .enter().append("g")
       .attr("class", "node")
@@ -86,38 +140,16 @@ function draw(root){
   node.append("circle")
       .attr("r", function(d) {
         return d.r; })
-      .style("fill", function(d) {return color(d['parent_cat']); });
+      .style("fill", function(d) {return bubble_color(d['parent_cat']); });
 
   node.append("text")
       .attr("dy", ".3em")
       .style("text-anchor", "middle")
       .text(function(d) { return d.paper_count; });
-
-  var width = 0.5*diameter
-  var height =diameter- 0.1*diameter
-
-  var legend = d3.select("body").append("svg")
-  .attr("class", "legend")
-  .attr("width", width)
-  .attr("height", height)
-  .selectAll("g")
-  .data(root[year][discipline]['parents'])
-  .enter().append("g")
-  .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
-
-legend.append("rect")
-  .attr("width", 18)
-  .attr("height", 18)
-  .style("fill", function(d) {return color(d); });
-
-legend.append("text")
-  .attr("x", 24)
-  .attr("y", 9)
-  .attr("dy", ".35em")
-  .text(function(d) { return d; });
-
 };
 
+d3.json("disciplines.json",discipline_selection);
+var data_model = d3.json("data_model.json",update);
 d3.select(self.frameElement).style("height", diameter + "px");
 
 </script>
