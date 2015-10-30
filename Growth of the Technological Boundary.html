@@ -6,6 +6,23 @@ text {
   font: 10px sans-serif;
 }
 
+body { font: 12px Arial;}
+
+path { 
+    stroke: steelblue;
+    stroke-width: 2;
+    fill: none;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: grey;
+    stroke-width: 1;
+    shape-rendering: crispEdges;
+
+}
+
 </style>
 <body>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
@@ -23,6 +40,8 @@ function get_discipline(){
 var margin = 75,
     width = 1400 - margin,
     height = 800 - margin;
+
+// Define the div for the tooltip
 
 var svg = d3.select("body").append("svg")
     .attr("width", width)
@@ -87,6 +106,16 @@ var bubble_color = d3.scale.category20c();
 var hidden_selection = d3.select("body").append("svg")
                         .attr("class","hidden_selection")
                         .text("cs")
+
+var tooltip = d3.select("body").append("foreignObject")
+     .append("xhtml:div")
+    .attr("class", "tooltip")
+    .on("mouseenter",function(d){tooltip.style("opacity",.9)})
+    .on("mouseleave",function(d){tooltip.style("opacity",0)})
+    .style("background", "lightsteelblue")
+     .style("position", "absolute")
+     .style("z-index", "10")
+     .style("opacity", 0);
 
 function draw(data_model){
 
@@ -177,25 +206,40 @@ var bubble_svg = svg.append("svg")
       .filter(function(d) { return !d.children; }))
       .enter().append("g")
       .attr("class", "node")
-      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
-
-  node.append("title")
-      .text(function(d) {
-          return d.category + ": " + d.paper_count});
+      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+     
 
   node.append("circle")
       .attr("r", function(d) {
         return d.r; })
-      .style("fill", function(d) {return bubble_color(d['parent_cat']); });
+      .attr("class","cat_circ")
+      .style("fill", function(d) {return bubble_color(d['parent_cat'])});
+
+
+      d3.selectAll(".cat_circ").on("mouseenter", function(d) {
+      var matrix = this.getScreenCTM()
+      .translate(+ this.getAttribute("cx"), + this.getAttribute("cy"));
+      var rand_paper = Math.floor(Math.random()*d['paper_count'])
+      tooltip.html('<b>category: </b>' +d['category'] +
+          '<br><b>parent category: </b>' + d['parent_cat'] +
+          '<br><b>paper: </b>' + d['papers'][rand_paper]['title'] +
+          '<br><b>paper author: </b>' + d['papers'][rand_paper]['author'] +
+          '<br><b>paper link: </b><a href=' + d['papers'][rand_paper]['link'] + ' target="_blank">link</a>')
+      .style("opacity",0.9)
+      .style("left", (window.pageXOffset + matrix.e) + "px")
+      .style("top", (window.pageYOffset + matrix.f) + "px")
+      });
+
+      d3.selectAll(".cat_circ").on("mouseleave", function(d) {tooltip.style("opacity",0)})
 
   node.append("text")
       .attr("dy", ".3em")
       .style("text-anchor", "middle")
-      .text(function(d) { return d.paper_count; });
-
+      .text(function(d) { return d.paper_count;});
   }
 
 var slider_width = width-400,
+    slider_height = 100
     startingValue = 2000;
 
 // sets scale for slider
@@ -213,13 +257,13 @@ var brush = d3.svg.brush()
 var svg_slider = svg.append("svg")
     .attr("width", width)
     .attr("x",200)
-    .attr("y",-height/2+50)
+    .attr("y",-slider_height/2+50)
   .append("g")
 
 svg_slider.append("g")
     .attr("class", "x axis")
     // put in middle of screen
-    .attr("transform", "translate(0," + height / 2 + ")")
+    .attr("transform", "translate(0," + slider_height / 2 + ")")
     .attr("x",18)
     // inroduce axis
     .call(d3.svg.axis()
@@ -241,18 +285,18 @@ slider.selectAll(".extent,.resize")
     .remove();
 
 slider.select(".background")
-    .attr("height", height);
+    .attr("height", slider_height);
 
 var handle = slider.append("g")
     .attr("class", "handle")
 
 handle.append("path")
-    .attr("transform", "translate(0," + height / 2 + ")")
+    .attr("transform", "translate(0," + slider_height / 2 + ")")
     .attr("d", "M 0 -20 V 20")
 
 handle.append('text')
   .text(startingValue)
-  .attr("transform", "translate(" + (-18) + " ," + (height / 2 ) + ")");
+  .attr("transform", "translate(" + (-18) + " ," + (slider_height / 2 ) + ")");
 
 slider
     .call(brush.event)
