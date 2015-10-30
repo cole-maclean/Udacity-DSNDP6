@@ -14,13 +14,11 @@ text {
 <script src="d3.slider.js"></script>
 <script>
 
-function get_year(){return 2015}
+function get_year(){
+  return +d3.select(".handle").select("text").text()}
 
 function get_discipline(){return 'cs'}
 
-function update(data_model){
-  draw(data_model)
-}
 
 function discipline_selection(disciplines){
   var radius = 20
@@ -34,7 +32,12 @@ function discipline_selection(disciplines){
 
   discipline_node.append("circle")
   .attr("r", radius)
-  .attr("fill", 'Gray')
+  .attr("fill", function(d){
+        if (d==='cs'){
+          return 'Red'
+        } else {
+          return 'Gray'
+        }});
 
   discipline_node.append("text")
     .attr("x", 24)
@@ -101,6 +104,8 @@ var bubble_color = d3.scale.category20c();
 
 function draw(data_model){
 
+  function update(){
+
   year = get_year()
   discipline = get_discipline()
 
@@ -119,17 +124,22 @@ var bubble_svg = svg.append("svg")
     .attr("y",(height/2*(1-category_ratio)))
     .attr("class", "bubble");
 
+  d3.selectAll('.node').remove();
+  d3.selectAll('.rect').remove();
   var legend_node = legend.selectAll(".node")
-  .data(data_model[year][discipline]['parents'])
+  .attr("class","node")
+  .data(data_model[year][discipline]['parents']) 
   .enter().append("g")
   .attr("transform", function(d, i) {return "translate(0," + (i+1) * 20 + ")"; });
 
   legend_node.append("rect")
+    .attr("class","node")
     .attr("width", 18)
     .attr("height", 18)
     .style("fill", function(d) {return bubble_color(d); });
 
   legend_node.append("text")
+    .attr("class","node")
     .attr("x", 24)
     .attr("y", 9)
     .attr("dy", ".35em")
@@ -138,10 +148,9 @@ var bubble_svg = svg.append("svg")
   var node = bubble_svg.selectAll(".node")
       .data(bubble.nodes(data_model[year][discipline])
       .filter(function(d) { return !d.children; }))
-    .enter().append("g")
+      .enter().append("g")
       .attr("class", "node")
       .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
-
 
   node.append("title")
       .text(function(d) {
@@ -156,10 +165,11 @@ var bubble_svg = svg.append("svg")
       .attr("dy", ".3em")
       .style("text-anchor", "middle")
       .text(function(d) { return d.paper_count; });
-};
+
+  }
 
 var slider_width = width-400,
-    startingValue = 1999;
+    startingValue = 2000;
 
 // sets scale for slider
 var x = d3.scale.linear()
@@ -226,17 +236,19 @@ function brushed() {
   if (d3.event.sourceEvent) { // not a programmatic event
     handle.select('text');
     value = x.invert(d3.mouse(this)[0]);
-    brush.extent([value, value]);
+    brush.extent([value, value])
   }
-
   handle.attr("transform", "translate(" + x(value) + ",0)");
   handle.select('text').text(Math.floor(value))
+  update()
 }
 
+update()
+};
 
 
 d3.json("disciplines.json",discipline_selection);
-var data_model = d3.json("data_model.json",update);
+d3.json("data_model.json",draw);
 //d3.select(self.frameElement).style("height", diameter + "px");
 
 </script>
