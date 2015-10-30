@@ -31,25 +31,27 @@ path {
 <script src="d3.slider.js"></script>
 <script>
 
+//page state functions - retrieve parameters stored on page
 function get_year(){
   return +d3.select(".handle").select("text").text()}
 
 function get_discipline(){
   return d3.select(".hidden_selection").text()}
 
+
+//hard coded single page dimensions
 var margin = 75,
     width = 1400 - margin,
     height = 800 - margin;
 
-// Define the div for the tooltip
+//Base SVG Definitions
 
+//full page main svg
 var svg = d3.select("body").append("svg")
     .attr("width", width)
     .attr("height", height)
 
 var page_title = svg.append("svg")
-  .attr("width", width)
-  .attr("height", height)
   .attr("class","page_title")
   .append("text")
   .attr("x", width/2)
@@ -83,72 +85,156 @@ var discipline_title = svg.append("svg")
 .style("font-weight", "bold")
 .text("Select Discipline");
 
-
-
 var legend = svg.append("svg")
   .attr("width", 200)
   .attr("height", height)
   .attr("class","legend")
 
-
-var about = svg.append("svg")
-  .attr("class","legend_title")
-  .append("text")
-  .attr("x", 40)
-  .attr("y", height)
-  .attr("dy", ".35em")
-  .style("text-anchor", "middle")
-  .style("font-weight", "bold")
-  .text("About");
-
-var bubble_color = d3.scale.category20c();
+var about = d3.select("body").append("foreignObject")
+              .append("xhtml:div")
+              .attr("class", "about")
+              .style("position", "absolute")
+              .style("left", width/2 + "px")
+              .style("top", height + "px")
+              .html("<b>About</b>")
 
 var hidden_selection = d3.select("body").append("svg")
                         .attr("class","hidden_selection")
                         .text("cs")
 
 var tooltip = d3.select("body").append("foreignObject")
-     .append("xhtml:div")
-    .attr("class", "tooltip")
-    .on("mouseenter",function(d){tooltip.style("opacity",.9)})
-    .on("mouseleave",function(d){tooltip.style("opacity",0)})
-    .style("background", "lightsteelblue")
-     .style("position", "absolute")
-     .style("z-index", "10")
-     .style("opacity", 0);
+              .append("xhtml:div")
+              .attr("class", "tooltip")
+              .on("mouseenter",function(d){tooltip.style("opacity",.9)})
+              .on("mouseleave",function(d){tooltip.style("opacity",0)})
+              .style("background", "lightsteelblue")
+              .style("position", "absolute")
+              .style("z-index", "10")
+              .style("opacity", 0);
 
+//initial page load call
 function draw(data_model){
 
+    //page update function called after any changes
+    function update(){
+      //get updated parameters
+      year = get_year()
+      discipline = get_discipline()
+      
+      //ratio to determine size of entire bubble_svg for relative sizes over years
+      category_ratio = data_model[year][discipline]['children'].length/data_model[2015][discipline]['children'].length
+
+      var bubble_color = d3.scale.category20c()
+      //define base svg for category bubbles
+      var bubble = d3.layout.pack()
+        .sort(null)
+        .size([width*category_ratio, height*category_ratio])//sized as per category_ratio
+        .padding(1.5)
+        .value(function(d){return d.paper_count});
+
+      var bubble_svg = svg.append("svg")
+          .attr("width", width*category_ratio)
+          .attr("height", height*category_ratio)
+          .attr("x",(width/2*(1-category_ratio)))
+          .attr("y",(height/2*(1-category_ratio)))
+          .attr("class", "bubble");
+
+      //remove old bubbles and legend
+      d3.selectAll('.node').remove();
+      d3.selectAll('.rect').remove();
+
+      //Data Driven SVGs
+
+      //build bubble for each category filtered to selected year and discipline
+      var node = bubble_svg.selectAll(".node")
+        .data(bubble.nodes(data_model[year][discipline])
+        .filter(function(d) { return !d.children; }))
+        .enter().append("g")
+        .attr("class", "node")
+        .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+     
+
+      node.append("circle")
+        .attr("r", function(d) {
+          return d.r; })
+        .attr("class","cat_circ")
+        //fill based on parent category
+        .style("fill", function(d) {return bubble_color(d['parent_cat'])});
+
+      node.append("text")
+        .attr("dy", ".3em")
+        .style("text-anchor", "middle")
+        .text(function(d) { return d.paper_count;});
+
+      //tooltip show and hide events and encode selection data
+      d3.selectAll(".cat_circ").on("mouseenter", function(d) {
+        var matrix = this.getScreenCTM()
+        .translate(+ this.getAttribute("cx"), + this.getAttribute("cy"));
+        var rand_paper = Math.floor(Math.random()*d['paper_count'])
+        tooltip.html('<b>category: </b>' +d['category'] +
+            '<br><b>parent category: </b>' + d['parent_cat'] +
+            '<br><b>paper: </b>' + d['papers'][rand_paper]['title'] +
+            '<br><b>paper author: </b>' + d['papers'][rand_paper]['author'] +
+            '<br><b>paper link: </b><a href=' + d['papers'][rand_paper]['link'] + ' target="_blank">link</a>')
+        .style("opacity",0.9)
+        .style("left", (window.pageXOffset + matrix.e) + "px")
+        .style("top", (window.pageYOffset + matrix.f) + "px")
+      });
+      d3.selectAll(".cat_circ").on("mouseleave", function(d) {tooltip.style("opacity",0)})
+
+      //legend svg definition
+      var legend_node = legend.selectAll(".node")
+        .attr("class","node")
+        .data(data_model[year][discipline]['parents']) 
+        .enter().append("g")
+        .attr("transform", function(d, i) {return "translate(0," + (i+1) * 20 + ")"; });
+
+      legend_node.append("rect")
+        .attr("class","node")
+        .attr("width", 18)
+        .attr("height", 18)
+        .style("fill", function(d) {return bubble_color(d);});
+
+      legend_node.append("text")
+        .attr("class","node")
+        .attr("x", 24)
+        .attr("y", 9)
+        .attr("dy", ".35em")
+        .text(function(d) { return d; });
+  }
+
+  //build discipline selection pane
   function discipline_selection(disciplines){
 
   var discipline= svg.append("svg")
-  .attr("x",width - 100)
-  .attr("class","discipline")
+    .attr("x",width - 100)
+    .attr("class","discipline")
 
   var radius = 20
-  var discipline_color = d3.scale.ordinal()
-            .domain(disciplines)
-            .range(colorbrewer.RdGy[10]);
   var discipline_node = discipline.selectAll(".node")
-  .data(disciplines)
-  .enter().append("g")
-  .attr("transform", function(d, i) {return "translate(" + radius + "," + (i+1) * (radius*2+10) + ")";})
+    .data(disciplines)
+    .enter().append("g")
+    .attr("transform", function(d, i) {return "translate(" + radius + "," + (i+1) * (radius*2+10) + ")";})
 
   discipline_node.append("circle")
-  .attr("r", radius)
-  .attr("class","discipline")
-  .attr("fill", function(d){
-        if (d==='cs'){
-          return 'Red'
-        } else {
-          return 'Gray'
-        }})
-  .attr("id",function(d){return d})
-  .on("click",function(d){
-    d3.selectAll(".discipline").attr("fill","Gray")
-    d3.select(this).attr("fill","Red")
-    d3.select(".hidden_selection").text(this.id)
-    update()
+    .attr("r", radius)
+    .attr("class","discipline")
+    //fill red if selected, gray otherwise. 'CS' used as default selection
+    .attr("fill", function(d){
+          if (d==='cs'){
+            return 'Red'
+          } else {
+            return 'Gray'
+          }})
+    //id used to store clicked shape discipline name
+    .attr("id",function(d){return d})
+    //on user selection, change selection red, all others gray. Store selection category id to hidden_selection svg, used in get_discipline function
+    .on("click",function(d){
+      d3.selectAll(".discipline").attr("fill","Gray")
+      d3.select(this).attr("fill","Red")
+      d3.select(".hidden_selection").text(this.id)
+      //run update after user selection
+      update()
   });
 
   discipline_node.append("text")
@@ -159,85 +245,7 @@ function draw(data_model){
   }
 
 
-  function update(){
-
-  year = get_year()
-  discipline = get_discipline()
-
-
-  category_ratio = data_model[year][discipline]['children'].length/data_model[2015][discipline]['children'].length
-
-  var bubble = d3.layout.pack()
-    .sort(null)
-    .size([width*category_ratio, height*category_ratio])
-    .padding(1.5)
-    .value(function(d){return d.paper_count});
-
-var bubble_svg = svg.append("svg")
-    .attr("width", width*category_ratio)
-    .attr("height", height*category_ratio)
-    .attr("x",(width/2*(1-category_ratio)))
-    .attr("y",(height/2*(1-category_ratio)))
-    .attr("class", "bubble");
-
-  d3.selectAll('.node').remove();
-  d3.selectAll('.rect').remove();
-  var legend_node = legend.selectAll(".node")
-  .attr("class","node")
-  .data(data_model[year][discipline]['parents']) 
-  .enter().append("g")
-  .attr("transform", function(d, i) {return "translate(0," + (i+1) * 20 + ")"; });
-
-  legend_node.append("rect")
-    .attr("class","node")
-    .attr("width", 18)
-    .attr("height", 18)
-    .style("fill", function(d) {return bubble_color(d); });
-
-  legend_node.append("text")
-    .attr("class","node")
-    .attr("x", 24)
-    .attr("y", 9)
-    .attr("dy", ".35em")
-    .text(function(d) { return d; });
-
-  var node = bubble_svg.selectAll(".node")
-      .data(bubble.nodes(data_model[year][discipline])
-      .filter(function(d) { return !d.children; }))
-      .enter().append("g")
-      .attr("class", "node")
-      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
-     
-
-  node.append("circle")
-      .attr("r", function(d) {
-        return d.r; })
-      .attr("class","cat_circ")
-      .style("fill", function(d) {return bubble_color(d['parent_cat'])});
-
-
-      d3.selectAll(".cat_circ").on("mouseenter", function(d) {
-      var matrix = this.getScreenCTM()
-      .translate(+ this.getAttribute("cx"), + this.getAttribute("cy"));
-      var rand_paper = Math.floor(Math.random()*d['paper_count'])
-      tooltip.html('<b>category: </b>' +d['category'] +
-          '<br><b>parent category: </b>' + d['parent_cat'] +
-          '<br><b>paper: </b>' + d['papers'][rand_paper]['title'] +
-          '<br><b>paper author: </b>' + d['papers'][rand_paper]['author'] +
-          '<br><b>paper link: </b><a href=' + d['papers'][rand_paper]['link'] + ' target="_blank">link</a>')
-      .style("opacity",0.9)
-      .style("left", (window.pageXOffset + matrix.e) + "px")
-      .style("top", (window.pageYOffset + matrix.f) + "px")
-      });
-
-      d3.selectAll(".cat_circ").on("mouseleave", function(d) {tooltip.style("opacity",0)})
-
-  node.append("text")
-      .attr("dy", ".3em")
-      .style("text-anchor", "middle")
-      .text(function(d) { return d.paper_count;});
-  }
-
+//build slider and event handler. Code modified from http://bl.ocks.org/zanarmstrong/ddff7cd0b1220bc68a58
 var slider_width = width-400,
     slider_height = 100
     startingValue = 2000;
@@ -311,13 +319,16 @@ function brushed() {
   }
   handle.attr("transform", "translate(" + x(value) + ",0)");
   handle.select('text').text(Math.floor(value))
+  //run update after user changes slider
   update()
 }
+//load disciplines json data
 d3.json("disciplines.json",discipline_selection);
+
+//initial draw call on page load
 update()
 };
 
-
-
+//load data_model
 d3.json("data_model.json",draw);
 </script>
