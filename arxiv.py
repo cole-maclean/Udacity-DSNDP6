@@ -1,6 +1,9 @@
 from bs4 import BeautifulSoup
 import urllib
 import feedparser
+import time
+import csv
+from random import random
 def build_arxiv_cat_index():
 	url = 'http://arxiv.org/help/api/user-manual#python_simple_example'
 	data = urllib.urlopen(url).read()
@@ -27,10 +30,12 @@ def query_arxiv(category):
 	query_results = ''
 	print category
 	while query_start < int(max_results):
-	    url = ('http://export.arxiv.org/api/query?search_query=cat:'
-	           + category + '&max_results=1&start=' + str(query_start) + '&sortBy=submittedDate&sortOrder=ascending')
-	    query_results = query_results + urllib.urlopen(url).read()
-	    query_start = query_start + 100
+		url = ('http://export.arxiv.org/api/query?search_query=cat:'
+		+ category + '&max_results=3000&start=' + str(query_start) + '&sortBy=submittedDate&sortOrder=ascending')
+		query_results = query_results + urllib.urlopen(url).read()
+		query_start = query_start + 3000
+		print round(float(query_start)/float(max_results),1)*100
+		time.sleep(3)
 	return query_results
 
 #http://stackoverflow.com/questions/27889873/clustering-text-documents-using-scikit-learn-kmeans-in-python
@@ -43,7 +48,13 @@ def paper_category_model(paper_titles):
     true_k = 10
     my_words = ['based','mems','using']
     my_stop_words = set(text.ENGLISH_STOP_WORDS.union(my_words))
-    vectorizer = TfidfVectorizer(stop_words=my_stop_words,min_df=0.01)
+    try:
+    	vectorizer = TfidfVectorizer(stop_words=my_stop_words,min_df=0.04)
+    except ValueError:
+    	try:
+    		vectorizer = TfidfVectorizer(stop_words=my_stop_words,min_df=0.03)
+    	except ValueError:
+    		vectorizer = TfidfVectorizer(stop_words=my_stop_words,min_df=0.02)
     X = vectorizer.fit_transform(paper_titles)
     model = KMeans(n_clusters=true_k, init='k-means++', max_iter=100, n_init=1,random_state=42)
     model.fit(X)
@@ -58,18 +69,20 @@ def get_best_parent(paper_category,sorted_categories,discipline):
 
 import copy
 import json
+import os
 
 def build_data_model(results):
 	sorted_entries = sorted(results,key= lambda k:k['published'][0:4])
+	cat_list = ['stat','cs','math','physics']
+	print "data sorted"
 	old_year = int(sorted_entries[0]['published'][0:4])
 	data_model = {old_year:{}}
 	all_paper_titles ={}
 	discipline_cat_models = {} #0 - vectorizer, 1-model
-	limit_idx =0
 	for paper in sorted_entries:
-		if limit_idx%1==0:
+		discipline = paper['arxiv_primary_category']['term'].split('.')[0]
+		if discipline in cat_list:
 		    new_year = int(paper['published'][0:4])
-		    discipline = paper['arxiv_primary_category']['term'].split('.')[0]
 		    paper_title = paper['title']
 		    if discipline in discipline_cat_models.keys():
 		        disc_vectorizer,disc_model = discipline_cat_models[discipline]
@@ -84,10 +97,11 @@ def build_data_model(results):
 		    else:
 		        paper_category = discipline
 		    if new_year != old_year:
+		    	print new_year
 		        data_model[new_year] = copy.deepcopy(data_model[old_year])#stores results of previous year to build cummulative model
 		        old_year = new_year
 		        for model_discipline in all_paper_titles.keys():
-		            if len(all_paper_titles[model_discipline]) > 20:
+		            if len(all_paper_titles[model_discipline]) > 50:
 		                discipline_cat_models[model_discipline] = paper_category_model(all_paper_titles[model_discipline])  
 		    if discipline in data_model[new_year].keys():
 		        sorted_categories = ([k for (k,v) in sorted(data_model[new_year][discipline]['categories'].items(),
@@ -110,7 +124,6 @@ def build_data_model(results):
 		        data_model[new_year][discipline]=({'paper_count':1,
 		            'categories':{paper_category:{'parent_cat':best_parent,'category':paper_category,
 		                                            'papers':[paper],'paper_count':1}}})
-		limit_idx+=1
 	return data_model
 
 def store_data_model(data_model):
@@ -123,7 +136,7 @@ def store_data_model(data_model):
 	        data_model[yr][disc]['parents'] = list(set([k['parent_cat'] for k in data_model[yr][disc]['children']]))
 
 	with open('C:/Users/Cole/Desktop/Udacity/Data Analyst Nano Degree/Project 6/Udacity-DSNDP6/disciplines.json', 'w') as myfile:
-	    disc_list = data_model[max(data_model.keys())].keys()
+	    disc_list = sorted(['stat','cs','math','physics'])
 	    json.dump(disc_list, myfile)
 	    print 'success!'
 	        
@@ -131,30 +144,30 @@ def store_data_model(data_model):
 	    json.dump(data_model, fp)
 	    print 'success!!'
 
+def append_record(record):
+    with open('C:/Users/Cole/Desktop/Udacity/Data Analyst Nano Degree/Project 6/Udacity-DSNDP6/arxiv_data.json', 'a') as f:
+        json.dump(record, f)
+        f.write(os.linesep)
+
 def load_arxiv_data():
 	arxiv_cat_index = build_arxiv_cat_index()
-	with open('C:/Users/Cole/Desktop/Udacity/Data Analyst Nano Degree/Project 6/Udacity-DSNDP6/arxiv_data.json', 'w') as myfile:
-		json.dump([],myfile)
-	for discipline in arxiv_cat_index.keys():
+	cat_list = ['stat','cs','math','cond-mat','physics']
+	for discipline in cat_list:
 		for category in arxiv_cat_index[discipline]:
 			results = query_arxiv(category)
 			parsed_results =feedparser.parse(results)['entries']
 			parsed_papers = ([{k:v for (k,v) in paper.iteritems()
 								 if k not in ['published_parsed','summary_detail','updated_parsed']}
 								 for paper in parsed_results])
-			with open('C:/Users/Cole/Desktop/Udacity/Data Analyst Nano Degree/Project 6/Udacity-DSNDP6/arxiv_data.json', 'r') as myfile:
-				feed = json.load(myfile)
-			with open('C:/Users/Cole/Desktop/Udacity/Data Analyst Nano Degree/Project 6/Udacity-DSNDP6/arxiv_data.json', 'w') as myfile:
-				if feed:
-					for paper in parsed_papers:
-						feed.append(paper)
-					json.dump(feed, myfile)
-				else:
-					json.dump(parsed_papers, myfile)
-
+			for paper in parsed_papers:
+				append_record(paper)
 def main():
-	with open('C:/Users/Cole/Desktop/Udacity/Data Analyst Nano Degree/Project 6/Udacity-DSNDP6/arxiv_data.json', 'r') as myfile:
-	    arxiv_data =json.load(myfile)
+	arxiv_data =[]
+	with open('C:/Users/Cole/Desktop/Udacity/Data Analyst Nano Degree/Project 6/Udacity-DSNDP6/arxiv_data.json') as f:
+		for line in f:
+			if random() <= .005:
+				arxiv_data.append(json.loads(line))
+		print "data loaded"
 	data_model = build_data_model(arxiv_data)
 	store_data_model(data_model)
 	print 'success!!!'
