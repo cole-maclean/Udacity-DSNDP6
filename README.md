@@ -6,6 +6,6 @@ This visualization attempts to encode the growth in size and scope of the scient
 
 ##Design
 
-![Mandelbrot Fractal](http://bl.ocks.org/proclamo/raw/bd38273f0d72dce46b6f/)
+![Mandelbrot Fractal](madelbrot_fractal.png)
 
 
