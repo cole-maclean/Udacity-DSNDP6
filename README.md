@@ -6,6 +6,6 @@ This visualization attempts to encode the growth in size and scope of the scient
 
 ##Design
 
-![Mandelbrot Fractal](madelbrot_fractal.png)
+![Mandelbrot Fractal](https://github.com/cole-maclean/Udacity-DSNDP6/blob/master/madelbrot_fractal.png)
 
 
