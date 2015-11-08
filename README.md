@@ -14,11 +14,11 @@ The original design was to utilize a madelbrot fractal to encode the growing bou
 
 After obtaining feedback from co-workers on the orignal sketch, many suggested that the complexity of the fractal image took away from the main intent of the visualization.
 
-![Fractal Sketch](https://github.com/cole-maclean/Udacity-DSNDP6/blob/master/fractal_sketch.jpeg)
+![Fractal Sketch](https://github.com/cole-maclean/Udacity-DSNDP6/blob/master/fractal_sketch.jpg)
 
  Using this feedback, the design evolved into a simpliar bubble representation of the dataset. 
 
-![Bubble Sketch](https://github.com/cole-maclean/Udacity-DSNDP6/blob/master/bubble_sketch.jpeg)
+![Bubble Sketch](https://github.com/cole-maclean/Udacity-DSNDP6/blob/master/bubble_sketch.jpg)
 
  This simplier representation of the dataset provides intuitive understanding of the data remaining visually appealing.
 
