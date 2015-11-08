@@ -4,6 +4,7 @@ import feedparser
 import time
 import csv
 from random import random
+#parse table of categories from arxiv into lookup table for {discipline:[categories]}
 def build_arxiv_cat_index():
 	url = 'http://arxiv.org/help/api/user-manual#python_simple_example'
 	data = urllib.urlopen(url).read()
@@ -21,6 +22,7 @@ def build_arxiv_cat_index():
 	        pass
 	return results
 
+#loop through arxiv query for category and return results
 def query_arxiv(category):
 	url = 'http://export.arxiv.org/api/query?search_query=cat:' + category + '&max_results=1'
 	data = urllib.urlopen(url).read()
@@ -42,24 +44,41 @@ def query_arxiv(category):
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction import text
 from sklearn.cluster import KMeans
+import string
+from nltk import word_tokenize
+from nltk.stem import PorterStemmer
 import difflib
+
+#paper categorization model
+
+#tokenizer adapted from http://tech.swamps.io/recipe-text-clustering-using-nltk-and-scikit-learn/
+def text_tokenizer(text):
+	""" Tokenize text and stem words removing punctuation """
+	trans_table = {ord(c): None for c in string.punctuation}
+	text = text.translate(trans_table)
+	stemmer = PorterStemmer()
+	tokens = word_tokenize(text)
+	stemmer = PorterStemmer()
+	tokens = [stemmer.stem(t) for t in tokens]
+	return tokens
 
 def paper_category_model(paper_titles):
     true_k = 10
-    my_words = ['based','mems','using']
+    my_words = ['based','mems','using','non','use'] #custom stop words
     my_stop_words = set(text.ENGLISH_STOP_WORDS.union(my_words))
-    try:
-    	vectorizer = TfidfVectorizer(stop_words=my_stop_words,min_df=0.04)
+    try: #attemp highest minimum word frequency for vectorizer, step to lower min if no words returned at current cutofff
+    	vectorizer = TfidfVectorizer(tokenizer=text_tokenizer,stop_words=my_stop_words,min_df=0.05)
     except ValueError:
     	try:
-    		vectorizer = TfidfVectorizer(stop_words=my_stop_words,min_df=0.03)
+    		vectorizer = TfidfVectorizer(tokenizer=text_tokenizer,stop_words=my_stop_words,min_df=0.04)
     	except ValueError:
-    		vectorizer = TfidfVectorizer(stop_words=my_stop_words,min_df=0.02)
+    		vectorizer = TfidfVectorizer(tokenizer=text_tokenizer,stop_words=my_stop_words,min_df=0.03)
     X = vectorizer.fit_transform(paper_titles)
     model = KMeans(n_clusters=true_k, init='k-means++', max_iter=100, n_init=1,random_state=42)
     model.fit(X)
     return (vectorizer,model)
 
+#find best parent category based on simple word differences in category labels
 def get_best_parent(paper_category,sorted_categories,discipline):
     bp = difflib.get_close_matches(paper_category,sorted_categories,1)
     if bp:
@@ -71,6 +90,7 @@ import copy
 import json
 import os
 
+#function to parse papers into visualization data model
 def build_data_model(results):
 	sorted_entries = sorted(results,key= lambda k:k['published'][0:4])
 	cat_list = ['stat','cs','math','physics']
@@ -102,28 +122,30 @@ def build_data_model(results):
 		        old_year = new_year
 		        for model_discipline in all_paper_titles.keys():
 		            if len(all_paper_titles[model_discipline]) > 50:
-		                discipline_cat_models[model_discipline] = paper_category_model(all_paper_titles[model_discipline])  
+		                discipline_cat_models[model_discipline] = paper_category_model(all_paper_titles[model_discipline])
+		    parsed_paper = {k:v for (k,v) in paper.iteritems()
+								 if k in ['title','author','link']}  
 		    if discipline in data_model[new_year].keys():
 		        sorted_categories = ([k for (k,v) in sorted(data_model[new_year][discipline]['categories'].items(),
 		                                                    key=lambda (k, v): v['paper_count'],reverse=True)])
 		        all_paper_titles[discipline].append(paper_title)
 		        if paper_category in data_model[new_year][discipline]['categories'].keys():
 		            data_model[new_year][discipline]['paper_count']+=1
-		            data_model[new_year][discipline]['categories'][paper_category]['papers'].append(paper)
+		            data_model[new_year][discipline]['categories'][paper_category]['papers'].append(parsed_paper)
 		            data_model[new_year][discipline]['categories'][paper_category]['paper_count'] +=1
 		        else:
 		            best_parent = get_best_parent(paper_category,sorted_categories,discipline)
 		            data_model[new_year][discipline]['paper_count']+=1
 		            data_model[new_year][discipline]['categories'][paper_category] = ({'parent_cat':best_parent,
 		                                                                               'category':paper_category,
-		                                                                               'papers':[paper],
+		                                                                               'papers':[parsed_paper],
 		                                                                              'paper_count':1})
 		    else:
 		        all_paper_titles[discipline]=[paper_title]
 		        best_parent = discipline
 		        data_model[new_year][discipline]=({'paper_count':1,
 		            'categories':{paper_category:{'parent_cat':best_parent,'category':paper_category,
-		                                            'papers':[paper],'paper_count':1}}})
+		                                            'papers':[parsed_paper],'paper_count':1}}})
 	return data_model
 
 def store_data_model(data_model):
@@ -163,9 +185,9 @@ def load_arxiv_data():
 				append_record(paper)
 def main():
 	arxiv_data =[]
-	with open('C:/Users/Cole/Desktop/Udacity/Data Analyst Nano Degree/Project 6/Udacity-DSNDP6/arxiv_data.json') as f:
+	with open('C:/Users/Cole/Desktop/Udacity/Data Analyst Nano Degree/Project 6/arxiv_data.json') as f:
 		for line in f:
-			if random() <= .005:
+			if random() <= .01:
 				arxiv_data.append(json.loads(line))
 		print "data loaded"
 	data_model = build_data_model(arxiv_data)

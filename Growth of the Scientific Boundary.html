@@ -47,18 +47,16 @@ var margin = 75,
 //full page main svg
 var svg = d3.select("body").append("svg")
     .attr("width", width)
-    .attr("height", height)
-var page_title = svg.append("svg")
-  .attr("class","page_title")
-  .append("text")
-  .attr("x", width/2)
-  .attr("y", 10)
-  .attr("dy", ".35em")
-  .style("font-size", "20px")
-  .style("text-decoration","underline")
-  .style("text-anchor", "middle")
-  .style("font-weight", "bold")
-  .text("Growth of the Scientific Boundary");
+    .attr("height", height);
+
+var about = d3.select("body").append("foreignObject")
+    .append("xhtml:div")
+    .attr("class", "about")
+    .style("position", "absolute")
+    .style("left", width/2 - 175 + "px")
+    .style("top", 0 + "px")
+    .html('<h1>Growth of the Scientific Boundary</h1><br><center>Categorization of Arxiv Paper Titles from 2000 to 2015</center>');
+
 var legend_title = svg.append("svg")
   .attr("width", 200)
   .attr("height", 200)
@@ -70,6 +68,7 @@ var legend_title = svg.append("svg")
   .style("text-anchor", "middle")
   .style("font-weight", "bold")
   .text("Parent Category");
+
 var discipline_title = svg.append("svg")
 .attr("class","discipline_title")
 .append("text")
@@ -79,17 +78,20 @@ var discipline_title = svg.append("svg")
 .style("text-anchor", "middle")
 .style("font-weight", "bold")
 .text("Select Discipline");
+
 var legend = svg.append("svg")
   .attr("width", 200)
   .attr("height", height)
   .attr("class","legend")
+
 var about = d3.select("body").append("foreignObject")
               .append("xhtml:div")
               .attr("class", "about")
               .style("position", "absolute")
-              .style("left", width/2 + "px")
+              .style("left", width/2 -50 + "px")
               .style("top", height + "px")
-              .html('<a href="https://github.com/cole-maclean/Udacity-DSNDP6" target="_blank">Reddit</a>    <a href="https://github.com/cole-maclean/Udacity-DSNDP6" target="_blank"><b>Github</b></a>    <a href="https://github.com/cole-maclean/Udacity-DSNDP6" target="_blank">HackerNews</a>')
+              .html('<a href="https://github.com/cole-maclean/Udacity-DSNDP6" target="_blank">Reddit</a>    <a href="https://github.com/cole-maclean/Udacity-DSNDP6" target="_blank"><b>Github</b></a>    <a href="https://news.ycombinator.com/item?id=10515741" target="_blank">HackerNews</a>')
+
 var tooltip = d3.select("body").append("foreignObject")
               .append("xhtml:div")
               .attr("class", "tooltip")
@@ -99,6 +101,7 @@ var tooltip = d3.select("body").append("foreignObject")
               .style("position", "absolute")
               .style("z-index", "10")
               .style("opacity", 0);
+
 //initial page load call
 function draw(data_model){
     //page update function called after any changes
@@ -224,7 +227,7 @@ function draw(data_model){
   }
 //build slider and event handler. Code modified from http://bl.ocks.org/zanarmstrong/ddff7cd0b1220bc68a58
 var slider_width = width-400,
-    slider_height = 100
+    slider_height = 800
     startingValue = 2000;
 // sets scale for slider
 var x = d3.scale.linear()
@@ -253,7 +256,7 @@ svg_slider.append("g")
       .tickFormat(function(d) { return d; })
       .tickSize(0)
       .tickPadding(12)
-      .tickValues([1999, 2015]))
+      .tickValues([2000, 2015]))
   .select(".domain")
   .select(function() {console.log(this); return this.parentNode.appendChild(this.cloneNode(true)); })
     .attr("class", "halo");
@@ -274,6 +277,7 @@ handle.append('text')
   .attr("transform", "translate(" + (-18) + " ," + (slider_height / 2 ) + ")");
 slider
     .call(brush.event)
+
 function brushed() {
   var value = brush.extent()[0];
   if (d3.event.sourceEvent) { // not a programmatic event
@@ -286,10 +290,34 @@ function brushed() {
   //run update after user changes slider
   update()
 }
+
+function animate() {
+
+  var years = [];
+
+  for (i=2000;i<=2015;i++) {
+    years.push(i)
+  }
+
+  var year_idx = 0;
+
+  var year_interval = setInterval(function() {
+    handle.attr("transform", "translate(" + x(years[year_idx]) + ",0)");
+    handle.select('text').text(years[year_idx])
+    update()
+    year_idx++;
+
+    if (year_idx >= years.length) {
+      clearInterval(year_interval)
+    }
+
+  },1000);
+}
 //load disciplines json data
 d3.json("disciplines.json",discipline_selection);
 //initial draw call on page load
 update()
+animate()
 };
 //load data_model
 d3.json("data_model.json",draw);
