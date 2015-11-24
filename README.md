@@ -42,6 +42,16 @@ After building out the conceptual visualization using d3.js and publishing, I re
 
 I incorporated all but 1 of the recommendations in the final design. Although the suggestion 4. to keep the parent category legend colors consistent is a valid recommendation, it requires a trade-off in the d3.js implementation of the visualization to either keep the colors consistent, or keep the categories with the same parent category spatially close to each other. After reviewing the suggestion, I decided to keep the categories with the same parent categories spatially close as to allow the user to easily identify categories with the same parent category.
 
+###Initial Submission Feedback
+
+The initial submission for this project recieved 6 points of feedback:
+1. Keeping the parent category legend color consistent as the years progress - this suggestion was implemented and successfully maintains color consistency while keeping categories with the same parent category spatially close to each other
+2. Keep relative circle size based on paper count consistent - Recommendation implemented by changing the "category_ratio" scale from log to sqrt. Although still not perfect, it provides a balance between keeping sizes relatively similar but preventing really small categories from being so tiny that they are barely visible.
+3. Add details about number displayed in circle - Updated title to provide more detail
+4. Add extra hint that slider can be manipulated by user - Slider animation and Cross-Hair selector should give enough clues to user
+5. Bug in header prevent slider selection - Updated title to prevent this bug
+6. Usability bugs with tooltip and random paper details - Updated tooltip to descripe a random paper is selected and removed bug that makes tooltip reappear after mouseleave event.
+
 ##Resources
 
 Code modified and inspired from:

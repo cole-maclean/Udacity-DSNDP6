@@ -50,29 +50,11 @@ from nltk.stem import PorterStemmer
 import difflib
 
 #paper categorization model
-
-#tokenizer adapted from http://tech.swamps.io/recipe-text-clustering-using-nltk-and-scikit-learn/
-def text_tokenizer(text):
-	""" Tokenize text and stem words removing punctuation """
-	trans_table = {ord(c): None for c in string.punctuation}
-	text = text.translate(trans_table)
-	stemmer = PorterStemmer()
-	tokens = word_tokenize(text)
-	stemmer = PorterStemmer()
-	tokens = [stemmer.stem(t) for t in tokens]
-	return tokens
-
 def paper_category_model(paper_titles):
     true_k = 10
-    my_words = ['based','mems','using','non','use'] #custom stop words
+    my_words = ['based','mems','using','non','use','models','spaces','type'] #custom stop words
     my_stop_words = set(text.ENGLISH_STOP_WORDS.union(my_words))
-    try: #attemp highest minimum word frequency for vectorizer, step to lower min if no words returned at current cutofff
-    	vectorizer = TfidfVectorizer(tokenizer=text_tokenizer,stop_words=my_stop_words,min_df=0.05)
-    except ValueError:
-    	try:
-    		vectorizer = TfidfVectorizer(tokenizer=text_tokenizer,stop_words=my_stop_words,min_df=0.04)
-    	except ValueError:
-    		vectorizer = TfidfVectorizer(tokenizer=text_tokenizer,stop_words=my_stop_words,min_df=0.03)
+    vectorizer = TfidfVectorizer(stop_words=my_stop_words,max_features=8)
     X = vectorizer.fit_transform(paper_titles)
     model = KMeans(n_clusters=true_k, init='k-means++', max_iter=100, n_init=1,random_state=42)
     model.fit(X)
@@ -80,11 +62,12 @@ def paper_category_model(paper_titles):
 
 #find best parent category based on simple word differences in category labels
 def get_best_parent(paper_category,sorted_categories,discipline):
-    bp = difflib.get_close_matches(paper_category,sorted_categories,1)
+    bp = difflib.get_close_matches(paper_category,sorted_categories,n=1,cutoff=0.2)
     if bp:
-        return bp[0]
+    	s = difflib.SequenceMatcher(None, paper_category, bp[0])
+        return bp[0], s.ratio()
     else:
-        return discipline
+        return discipline, 0
 
 import copy
 import json
@@ -118,7 +101,7 @@ def build_data_model(results):
 		        paper_category = discipline
 		    if new_year != old_year:
 		    	print new_year
-		        data_model[new_year] = copy.deepcopy(data_model[old_year])#stores results of previous year to build cummulative model
+		        data_model[new_year] = copy.deepcopy(data_model[old_year])#stores results of previous year to build cumulative model
 		        old_year = new_year
 		        for model_discipline in all_paper_titles.keys():
 		            if len(all_paper_titles[model_discipline]) > 50:
@@ -128,13 +111,15 @@ def build_data_model(results):
 		    if discipline in data_model[new_year].keys():
 		        sorted_categories = ([k for (k,v) in sorted(data_model[new_year][discipline]['categories'].items(),
 		                                                    key=lambda (k, v): v['paper_count'],reverse=True)])
+		        best_parent, diff_ratio = get_best_parent(paper_category,sorted_categories,discipline)
+		        if diff_ratio >= 0.7:
+		            paper_category = best_parent
 		        all_paper_titles[discipline].append(paper_title)
 		        if paper_category in data_model[new_year][discipline]['categories'].keys():
 		            data_model[new_year][discipline]['paper_count']+=1
 		            data_model[new_year][discipline]['categories'][paper_category]['papers'].append(parsed_paper)
 		            data_model[new_year][discipline]['categories'][paper_category]['paper_count'] +=1
 		        else:
-		            best_parent = get_best_parent(paper_category,sorted_categories,discipline)
 		            data_model[new_year][discipline]['paper_count']+=1
 		            data_model[new_year][discipline]['categories'][paper_category] = ({'parent_cat':best_parent,
 		                                                                               'category':paper_category,

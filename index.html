@@ -7,43 +7,43 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <style>
-text {
-  font: 10px sans-serif;
-}
-body { font: 12px Arial;}
-path { 
-    stroke: steelblue;
-    stroke-width: 2;
-    fill: none;
-}
-.axis path,
-.axis line {
-    fill: none;
-    stroke: grey;
-    stroke-width: 1;
-    shape-rendering: crispEdges;
-}
+	text {font: 10px sans-serif;}
+	body { font: 12px Arial;}
+	path { 
+	    stroke: steelblue;
+	    stroke-width: 2;
+	    fill: none;
+	}
+	.axis path,
+	.axis line {
+	    fill: none;
+	    stroke: grey;
+	    stroke-width: 1;
+	    shape-rendering: crispEdges;
+	}
 </style>
-<body>
 
+<body>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 <script src="colorbrewer.js"></script>
 <script>
 //page state functions - retrieve parameters stored on page
-function get_year(){
-  return +d3.select(".handle").select("text").text()}
+function get_year(){return +d3.select(".handle").select("text").text()}
 //get user selected disciplin, default to 'cs'
 function get_discipline(){
-  if (d3.select(".selected")[0][0] ===null){
-    return 'cs'
-  } else {
-    return d3.select(".selected")[0][0].id
-  }};
+	if (d3.select(".selected")[0][0] ===null){
+		return 'cs';
+	} else {
+		return d3.select(".selected")[0][0].id;
+	}
+}
 //hard coded single page dimensions
 var margin = 75,
-    width = 1400 - margin,
+	width = 1400 - margin,
     height = 800 - margin;
+
 //Base SVG Definitions
+
 //full page main svg
 var svg = d3.select("body").append("svg")
     .attr("width", width)
@@ -53,271 +53,285 @@ var about = d3.select("body").append("foreignObject")
     .append("xhtml:div")
     .attr("class", "about")
     .style("position", "absolute")
-    .style("left", width/2 - 175 + "px")
+    .style("left", width/2 - 450 + "px")
     .style("top", 0 + "px")
-    .html('<h1>Growth of the Scientific Boundary</h1><br><center>Categorization of Arxiv Paper Titles from 2000 to 2015</center>');
+    .html('<h1>Categorization and Cumulative Paper Counts of Arxiv Papers from 2000 to 2015</h1>');
 
 var legend_title = svg.append("svg")
-  .attr("width", 200)
-  .attr("height", 200)
-  .attr("class","legend_title")
-  .append("text")
-  .attr("x", 40)
-  .attr("y", 9)
-  .attr("dy", ".35em")
-  .style("text-anchor", "middle")
-  .style("font-weight", "bold")
-  .text("Parent Category");
+	.attr("width", 200)
+	.attr("height", 200)
+	.attr("class","legend_title")
+	.append("text")
+	.attr("x", 40)
+	.attr("y", 9)
+	.attr("dy", ".35em")
+	.style("text-anchor", "middle")
+	.style("font-weight", "bold")
+	.text("Parent Category");
 
 var discipline_title = svg.append("svg")
-.attr("class","discipline_title")
-.append("text")
-.attr("x", width-75)
-.attr("y", 9)
-.attr("dy", ".35em")
-.style("text-anchor", "middle")
-.style("font-weight", "bold")
-.text("Select Discipline");
+	.attr("class","discipline_title")
+	.append("text")
+	.attr("x", width-75)
+	.attr("y", 9)
+	.attr("dy", ".35em")
+	.style("text-anchor", "middle")
+	.style("font-weight", "bold")
+	.text("Select Discipline");
 
 var legend = svg.append("svg")
-  .attr("width", 200)
-  .attr("height", height)
-  .attr("class","legend")
+	.attr("width", 200)
+	.attr("height", height)
+	.attr("class","legend");
 
 var about = d3.select("body").append("foreignObject")
-              .append("xhtml:div")
-              .attr("class", "about")
-              .style("position", "absolute")
-              .style("left", width/2 -50 + "px")
-              .style("top", height + "px")
-              .html('<a href="https://github.com/cole-maclean/Udacity-DSNDP6" target="_blank">Reddit</a>    <a href="https://github.com/cole-maclean/Udacity-DSNDP6" target="_blank"><b>Github</b></a>    <a href="https://news.ycombinator.com/item?id=10515741" target="_blank">HackerNews</a>')
+	.append("xhtml:div")
+	.attr("class", "about")
+	.style("position", "absolute")
+	.style("left", width/2 -50 + "px")
+	.style("top", height + "px")
+	.html('<a href="https://github.com/cole-maclean/Udacity-DSNDP6" target="_blank">Reddit</a>    <a href="https://github.com/cole-maclean/Udacity-DSNDP6" target="_blank"><b>Github</b></a>    <a href="https://news.ycombinator.com/item?id=10515741" target="_blank">HackerNews</a>');
 
 var tooltip = d3.select("body").append("foreignObject")
-              .append("xhtml:div")
-              .attr("class", "tooltip")
-              .on("mouseenter",function(d){tooltip.style("opacity",.9)})
-              .on("mouseleave",function(d){tooltip.style("opacity",0)})
-              .style("background", "lightsteelblue")
-              .style("position", "absolute")
-              .style("z-index", "10")
-              .style("opacity", 0);
+	.append("xhtml:div")
+	.attr("class", "tooltip")
+	.on("mouseenter",function(d){tooltip.style("opacity",.9)})
+	.on("mouseleave",function(d){tooltip.html('')})
+	.style("background", "lightsteelblue")
+	.style("position", "absolute")
+	.style("z-index", "10")
+	.style("opacity", 0);
 
 //initial page load call
 function draw(data_model){
+	var bubble_color = d3.scale.category20c()
     //page update function called after any changes
     function update(){
       //get updated parameters
-      year = get_year()
-      discipline = get_discipline()
+		year = get_year()
+		discipline = get_discipline()
       //ratio to determine size of entire bubble_svg for relative sizes over years
-    var ln_scale = d3.scale.log()
-    .domain([1, data_model[2015][discipline]['paper_count']])
-    .range([0, 1]);
-    var category_ratio = ln_scale(data_model[year][discipline]['paper_count'])
-      var bubble_color = d3.scale.category20c()
+		var ln_scale = d3.scale.pow().exponent(.5)
+			.domain([1, data_model[2015][discipline]['paper_count']])
+			.range([0, 1]);
+		var category_ratio = ln_scale(data_model[year][discipline]['paper_count']);
+      
       //define base svg for category bubbles
-      var bubble = d3.layout.pack()
-        .sort(null)
-        .size([width*category_ratio, (height-150)*category_ratio])//sized as per category_ratio
-        .padding(1.5)
-        .value(function(d){return d.paper_count});
-      var bubble_svg = svg.append("svg")
-          .attr("width", width*category_ratio)
-          .attr("height", height*category_ratio)
-          .attr("x",(width/2*(1-category_ratio)))
-          .attr("y",(100))
-          .attr("class", "bubble");
-      //remove old bubbles and legend
-      d3.selectAll('.node').remove();
-      d3.selectAll('.rect').remove();
+		var bubble = d3.layout.pack()
+			.sort(null)
+			.size([width*category_ratio, (height-150)*category_ratio])//sized as per category_ratio
+			.padding(1.5)
+			.value(function(d){return d.paper_count});
+        //.radius(function(d){return Math.sqrt(d)*5});
+		var bubble_svg = svg.append("svg")
+			.attr("width", width*category_ratio)
+			.attr("height", height*category_ratio)
+			.attr("x",(width/2*(1-category_ratio)))
+			.attr("y",(75))
+			.attr("class", "bubble");
+		//remove old bubbles and legend
+		d3.selectAll('.node').remove();
+		d3.selectAll('.rect').remove();
       //Data Driven SVGs
       //build bubble for each category filtered to selected year and discipline
-      var node = bubble_svg.selectAll(".node")
-        .data(bubble.nodes(data_model[year][discipline])
-        .filter(function(d) { return !d.children; }))
-        .enter().append("g")
-        .attr("class", "node")
-        .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+		var node = bubble_svg.selectAll(".node")
+			.data(bubble.nodes(data_model[year][discipline])
+			.filter(function(d) { return !d.children; }))
+			.enter().append("g")
+			.attr("class", "node")
+			.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
      
-      node.append("circle")
-        .attr("r", function(d) {
-          return d.r; })
-        .attr("class","cat_circ")
-        //fill based on parent category
-        .style("fill", function(d) {return bubble_color(d['parent_cat'])});
-      node.append("text")
-        .attr("dy", ".3em")
-        .style("text-anchor", "middle")
-        .text(function(d) { return d.paper_count;});
+		node.append("circle")
+			.attr("r", function(d) {return d.r; })
+			.attr("class","cat_circ")
+			//fill based on parent category
+			.style("fill", function(d) {return bubble_color(d['parent_cat'])});
+
+		node.append("text")
+			.attr("dy", ".3em")
+			.style("text-anchor", "middle")
+			.text(function(d) { return d.paper_count;});
+
       //tooltip show and hide events and encode selection data
-      d3.selectAll(".cat_circ").on("mouseenter", function(d) {
-        var matrix = this.getScreenCTM()
-        .translate(+ this.getAttribute("cx"), + this.getAttribute("cy"));
-        var rand_paper = Math.floor(Math.random()*d['paper_count'])
-        tooltip.html('<b>category: </b>' +d['category'] +
-            '<br><b>parent category: </b>' + d['parent_cat'] +
-            '<br><b>paper: </b>' + d['papers'][rand_paper]['title'] +
-            '<br><b>paper author: </b>' + d['papers'][rand_paper]['author'] +
-            '<br><b>paper link: </b><a href=' + d['papers'][rand_paper]['link'] + ' target="_blank">link</a>')
-        .style("opacity",0.9)
-        .style("left", (window.pageXOffset + matrix.e) + "px")
-        .style("top", (window.pageYOffset + matrix.f) + "px")
-      });
-      d3.selectAll(".cat_circ").on("mouseleave", function(d) {tooltip.style("opacity",0)})
+		d3.selectAll(".cat_circ").on("mouseenter", function(d) {
+			var matrix = this.getScreenCTM()
+				.translate(+ this.getAttribute("cx"), + this.getAttribute("cy"));
+			var rand_paper = Math.floor(Math.random()*d['paper_count'])
+			tooltip.html('<b>category: </b>' +d['category'] +
+				'<br><b>parent category: </b>' + d['parent_cat'] +
+				'<br><b>random paper in category: </b>' + d['papers'][rand_paper]['title'] +
+				'<br><b>paper author: </b>' + d['papers'][rand_paper]['author'] +
+				'<br><b>paper link: </b><a href=' + d['papers'][rand_paper]['link'] + ' target="_blank">link</a>')
+				.style("opacity",0.9)
+				.style("left", (window.pageXOffset + matrix.e) + "px")
+				.style("top", (window.pageYOffset + matrix.f) + "px")
+			});
+		d3.selectAll(".cat_circ").on("mouseleave", function(d) {tooltip.style("opacity",0)});
       //legend svg definition
-      var legend_node = legend.selectAll(".node")
-        .attr("class","node")
-        .data(data_model[year][discipline]['parents']) 
-        .enter().append("g")
-        .attr("transform", function(d, i) {return "translate(0," + (i+1) * 20 + ")"; });
-      legend_node.append("rect")
-        .attr("class","node")
-        .attr("width", 18)
-        .attr("height", 18)
-        .style("fill", function(d) {return bubble_color(d);});
-      legend_node.append("text")
-        .attr("class","node")
-        .attr("x", 24)
-        .attr("y", 9)
-        .attr("dy", ".35em")
-        .text(function(d) { return d; });
-  }
+		var legend_node = legend.selectAll(".node")
+			.attr("class","node")
+			.data(data_model[year][discipline]['parents']) 
+			.enter().append("g")
+			.attr("transform", function(d, i) {return "translate(0," + (i+1) * 20 + ")"; });
+
+		legend_node.append("rect")
+			.attr("class","node")
+			.attr("width", 18)
+			.attr("height", 18)
+			.style("fill", function(d) {return bubble_color(d);});
+
+		legend_node.append("text")
+			.attr("class","node")
+			.attr("x", 24)
+			.attr("y", 9)
+			.attr("dy", ".35em")
+			.text(function(d) { return d; });
+  		}
+
   //build discipline selection pane
-  function discipline_selection(disciplines){
-  var discipline= svg.append("svg")
-    .attr("x",width - 100)
-    .attr("class","discipline")
-  var radius = 20
-  var discipline_node = discipline.selectAll(".node")
-    .data(disciplines)
-    .enter().append("g")
-    .attr("transform", function(d, i) {return "translate(" + radius + "," + (i+1) * (radius*2+10) + ")";})
-  discipline_node.append("circle")
-    .attr("r", radius)
-    //set class to discipline except default 'cs'. Used as key for user selection
-    .attr("class",function(d){
-      if (d==='cs'){
-        return 'selected'
-      } else {
-        return 'discipline'
-      }})
-    //fill red if selected, gray otherwise. 'CS' used as default selection
-    .attr("fill", function(d){
-          if (d==='cs'){
-            return 'Red'
-          } else {
-            return 'Gray'
-          }})
-    //id used to store clicked shape discipline name
-    .attr("id",function(d){return d})
-    //on user selection, change selection red. Set clicked shape class to selected.
-    .on("click",function(d){
-      d3.select('.selected').attr("fill","Gray")
-        .attr("class","discipline")
-      d3.select(this).attr("fill","Red")
-        .attr("class","selected")
-      //run update after user selection
-      update()
-  });
-  discipline_node.append("text")
-    .attr("x", 24)
-    .attr("y", 9)
-    .attr("dy", ".35em")
-    .text(function(d) { return d; });
-  }
-//build slider and event handler. Code modified from http://bl.ocks.org/zanarmstrong/ddff7cd0b1220bc68a58
-var slider_width = width-400,
-    slider_height = 800
-    startingValue = 2000;
-// sets scale for slider
-var x = d3.scale.linear()
-    .domain([2000, 2015])
-    .range([0, slider_width])
-    .clamp(true);
-// defines brush
-var brush = d3.svg.brush()
-    .x(x)
-    .extent([startingValue, startingValue])
-    .on("brush", brushed);
-var svg_slider = svg.append("svg")
-    .attr("width", width)
-    .attr("x",200)
-    .attr("y",-slider_height/2+50)
-  .append("g")
-svg_slider.append("g")
-    .attr("class", "x axis")
-    // put in middle of screen
-    .attr("transform", "translate(0," + slider_height / 2 + ")")
-    .attr("x",18)
-    // inroduce axis
-    .call(d3.svg.axis()
-      .scale(x)
-      .orient("bottom")
-      .tickFormat(function(d) { return d; })
-      .tickSize(0)
-      .tickPadding(12)
-      .tickValues([2000, 2015]))
-  .select(".domain")
-  .select(function() {console.log(this); return this.parentNode.appendChild(this.cloneNode(true)); })
-    .attr("class", "halo");
-var slider = svg_slider.append("g")
-    .attr("class", "slider")
-    .call(brush);
-slider.selectAll(".extent,.resize")
-    .remove();
-slider.select(".background")
-    .attr("height", slider_height);
-var handle = slider.append("g")
-    .attr("class", "handle")
-handle.append("path")
-    .attr("transform", "translate(0," + slider_height / 2 + ")")
-    .attr("d", "M 0 -20 V 20")
-handle.append('text')
-  .text(startingValue)
-  .attr("transform", "translate(" + (-18) + " ," + (slider_height / 2 ) + ")");
-slider
-    .call(brush.event)
+	function discipline_selection(disciplines){
+		var discipline= svg.append("svg")
+			.attr("x",width - 100)
+			.attr("class","discipline")
+		var radius = 20
+  		var discipline_node = discipline.selectAll(".node")
+    		.data(disciplines)
+		    .enter().append("g")
+		    .attr("transform", function(d, i) {return "translate(" + radius + "," + (i+1) * (radius*2+10) + ")";})
 
-function brushed() {
-  var value = brush.extent()[0];
-  if (d3.event.sourceEvent) { // not a programmatic event
-    handle.select('text');
-    value = x.invert(d3.mouse(this)[0]);
-    brush.extent([value, value])
-  }
-  handle.attr("transform", "translate(" + x(value) + ",0)");
-  handle.select('text').text(Math.floor(value))
-  //run update after user changes slider
-  update()
-}
+  		discipline_node.append("circle")
+    		.attr("r", radius)
+			//set class to discipline except default 'cs'. Used as key for user selection
+			.attr("class",function(d){
+				if (d==='cs'){
+					return 'selected';
+				} else {
+					return 'discipline';
+				}
+			})
+			//fill red if selected, gray otherwise. 'CS' used as default selection
+			.attr("fill", function(d){
+				if (d==='cs'){
+					return 'Red';
+				} else {
+					return 'Gray';
+				}
+			})
+    		//id used to store clicked shape discipline name
+		    .attr("id",function(d){return d})
+		    //on user selection, change selection red. Set clicked shape class to selected.
+		    .on("click",function(d){
+		    	d3.select('.selected').attr("fill","Gray")
+		        	.attr("class","discipline")
+		      	d3.select(this).attr("fill","Red")
+		        	.attr("class","selected")
+		      //run update after user selection
+		      	update()
+  			});
 
-function animate() {
+		discipline_node.append("text")
+			.attr("x", 24)
+			.attr("y", 9)
+			.attr("dy", ".35em")
+			.text(function(d) { return d; });
+		}
 
-  var years = [];
+	//build slider and event handler. Code modified from http://bl.ocks.org/zanarmstrong/ddff7cd0b1220bc68a58
+	var slider_width = width-400,
+	    slider_height = 800
+	    startingValue = 2000;
+	// sets scale for slider
+	var x = d3.scale.linear()
+	    .domain([2000, 2015])
+	    .range([0, slider_width])
+	    .clamp(true);
+	// defines brush
+	var brush = d3.svg.brush()
+	    .x(x)
+	    .extent([startingValue, startingValue])
+	    .on("brush", brushed);
 
-  for (i=2000;i<=2015;i++) {
-    years.push(i)
-  }
+	var svg_slider = svg.append("svg")
+	    .attr("width", width)
+	    .attr("x",200)
+	    .attr("y",-slider_height/2+60)
+	  	.append("g")
 
-  var year_idx = 0;
+	svg_slider.append("g")
+	    .attr("class", "x axis")
+	    // put in middle of screen
+	    .attr("transform", "translate(0," + slider_height / 2 + ")")
+	    .attr("x",18)
+	    // introduce axis
+	    .call(d3.svg.axis()
+			.scale(x)
+			.orient("bottom")
+			.tickFormat(function(d) { return d; })
+			.tickSize(0)
+			.tickPadding(12)
+			.tickValues([2000, 2015]))
+		.select(".domain")
+		.select(function() {console.log(this); return this.parentNode.appendChild(this.cloneNode(true));})
+	    .attr("class", "halo");
 
-  var year_interval = setInterval(function() {
-    handle.attr("transform", "translate(" + x(years[year_idx]) + ",0)");
-    handle.select('text').text(years[year_idx])
-    update()
-    year_idx++;
+	var slider = svg_slider.append("g")
+	    .attr("class", "slider")
+	    .call(brush);
 
-    if (year_idx >= years.length) {
-      clearInterval(year_interval)
-    }
+	slider.selectAll(".extent,.resize")
+	    .remove();
 
-  },1000);
-}
-//load disciplines json data
-d3.json("disciplines.json",discipline_selection);
-//initial draw call on page load
-update()
-animate()
+	slider.select(".background")
+	    .attr("height", slider_height);
+
+	var handle = slider.append("g")
+	    .attr("class", "handle");
+
+	handle.append("path")
+	    .attr("transform", "translate(0," + slider_height / 2 + ")")
+	    .attr("d", "M 0 -20 V 20");
+
+	handle.append('text')
+	  .text(startingValue)
+	  .attr("transform", "translate(" + (-18) + " ," + (slider_height / 2 ) + ")");
+
+	slider
+	    .call(brush.event)
+
+	function brushed() {
+		var value = brush.extent()[0];
+		if (d3.event.sourceEvent) { // not a programmatic event
+			handle.select('text');
+			value = x.invert(d3.mouse(this)[0]);
+			brush.extent([value, value])
+		}
+		handle.attr("transform", "translate(" + x(value) + ",0)");
+		handle.select('text').text(Math.floor(value))
+	  	//run update after user changes slider
+		update()
+	}
+
+	function animate() {
+		var years = [];
+		for (i=2000;i<=2015;i++) {
+			years.push(i)
+		}
+		var year_idx = 0;
+		var year_interval = setInterval(function() {
+			handle.attr("transform", "translate(" + x(years[year_idx]) + ",0)");
+			handle.select('text').text(years[year_idx])
+			update()
+			year_idx++;
+			if (year_idx >= years.length) {
+				clearInterval(year_interval)
+			}
+		},1000);
+	}
+	//load disciplines json data
+	d3.json("disciplines.json",discipline_selection);
+	//initial draw call on page load
+	update()
+	animate()
 };
 //load data_model
 d3.json("data_model.json",draw);
